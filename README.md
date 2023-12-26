@@ -1,0 +1,1 @@
+Personal LLM experimentation. Licensed under the MIT license if anyone else would like to use it for something.
