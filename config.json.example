@@ -1,3 +1,4 @@
 {
-    "mistral_api_key" : "INSERT_YOUR_MISTRAL_API_KEY"
+    "mistral_api_key" : "INSERT_YOUR_MISTRAL_API_KEY",
+    "model_path" : "./files/models"
 }
