@@ -1,4 +1,17 @@
 {
     "mistral_api_key" : "INSERT_YOUR_MISTRAL_API_KEY",
-    "model_path" : "./files/models"
+    "model_path" : "./files/models",
+    "default_model" : "stablelm-zephyr-3b.Q5_K_S",
+    "models" : 
+    [
+        {
+            "type" : "LlamaCpp",
+            "args" : 
+            {
+                "models"  : ["stablelm-zephyr-3b.Q5_K_S"],
+                "hf_repo" : "TheBloke/stablelm-zephyr-3b-GGUF",
+                "chat_format" : "zephyr" 
+            }
+        }
+    ]
 }

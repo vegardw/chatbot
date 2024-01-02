@@ -6,17 +6,30 @@ from models import LlamaCppModel
 
 
 conf = Config()
-test_model_name = "stablelm-zephyr-3b.Q5_K_S"
+models = []
+model_names = []
 
-stablelm = LlamaCppModel([test_model_name], local_path=conf.model_path, hf_repo="TheBloke/stablelm-zephyr-3b-GGUF", chat_format="zephyr")
+for m in conf.models:
+    if m["type"] == "LlamaCpp":
+        arguments = m["args"]
+        if not "local_path" in arguments:
+            arguments["local_path"] = conf.model_path
+
+        models.append(LlamaCppModel(**arguments))
+        model_names.extend(arguments["models"])
+
+model_names = set(model_names)
 
 def generate_chat_completion_streaming(message, history, system_prompt, model):
-    yield from stablelm.generate_chat_completion_streaming(message, history, system_prompt, model)
+    for m in models:
+        if model in m.models:
+            yield from m.generate_chat_completion_streaming (message, history, system_prompt, model)
+            break
 
 with gr.Blocks() as chatbot:
     with gr.Row():
         system_prompt = gr.Textbox("You are a helpful assistant", label="System Prompt")
-        models = gr.Dropdown([test_model_name], value=test_model_name, label="Model")
-    gr.ChatInterface(generate_chat_completion_streaming, additional_inputs=[system_prompt, models])
+        model = gr.Dropdown(model_names, value=conf.default_model, label="Model")
+    gr.ChatInterface(generate_chat_completion_streaming, additional_inputs=[system_prompt, model])
 
 chatbot.launch(server_name="0.0.0.0")
