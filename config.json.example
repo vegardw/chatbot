@@ -12,6 +12,17 @@
                 "hf_repo" : "TheBloke/stablelm-zephyr-3b-GGUF",
                 "chat_format" : "zephyr" 
             }
-        }
+        },
+	{
+            "type" : "LlamaCpp",
+            "args" :
+            {
+                "models"  : ["starling-lm-7b-alpha.Q5_K_S"],
+                "hf_repo" : "TheBloke/Starling-LM-7B-alpha-GGUF",
+                "chat_format" : "openchat",
+                "n_gpu_layers" : 32,
+                "n_context" : 8192
+            }
+	}
     ]
 }

@@ -5,11 +5,22 @@ import os, errno
 from llama_cpp import Llama
 
 class LlamaCppModel(LanguageModel):
-    def __init__(self,  models: List[str], local_path: str, hf_repo: str = None, suggested_model: str = None, chat_format: str = 'llama-2') -> None:
+    def __init__(
+            self,
+            models: List[str],
+            local_path: str,
+            hf_repo: str = None,
+            suggested_model: str = None,
+            chat_format: str = 'llama-2',
+            n_gpu_layers: int = 0,
+            n_context: int = 512
+        ) -> None:
         super().__init__(models=models, suggested_model=suggested_model)
         self.local_path = local_path
         self.hf_repo = hf_repo
         self.chat_format = chat_format
+        self.n_gpu_layers = n_gpu_layers
+        self.n_context = n_context
         self.model_objects = {}
 
 
@@ -30,7 +41,13 @@ class LlamaCppModel(LanguageModel):
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), filename)
         
         if not model in self.model_objects:
-            self.model_objects[model] = Llama(model_path=filename, chat_format=self.chat_format, verbose=False)
+            self.model_objects[model] = Llama(
+                model_path=filename,
+                chat_format=self.chat_format,
+                n_gpu_layers=self.n_gpu_layers,
+                n_context = self.n_context,
+                verbose=False
+            )
         model = self.model_objects[model]
 
         messages = [{'role': 'system', 'content': system_prompt}]
