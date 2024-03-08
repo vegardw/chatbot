@@ -31,7 +31,7 @@ for m in conf.models:
         models.append(AnthropicClaudeModel(**arguments))
         model_names.extend(arguments["models"])
 
-model_names = set(model_names)
+model_names = sorted(set(model_names))
 
 def generate_chat_completion(message, history, system_prompt, model):
     for m in models:
