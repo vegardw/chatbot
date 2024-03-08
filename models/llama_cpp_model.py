@@ -23,6 +23,8 @@ class LlamaCppModel(LanguageModel):
         self.n_context = n_context
         self.model_objects = {}
 
+    def generate_chat_completion(self, message, history, system_prompt, model):
+        pass
 
     def generate_chat_completion_streaming(self, message, history, system_prompt, model):
         if model not in self.models:
