@@ -1,3 +1,4 @@
 from .language_model import LanguageModel
 from .llama_cpp_model import LlamaCppModel
 from .hf_transformers_model import HfTransformersModel
+from .anthropic_claude_model import AnthropicClaudeModel

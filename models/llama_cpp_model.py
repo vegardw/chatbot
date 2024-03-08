@@ -13,9 +13,10 @@ class LlamaCppModel(LanguageModel):
             suggested_model: str = None,
             chat_format: str = 'llama-2',
             n_gpu_layers: int = 0,
-            n_context: int = 512
+            n_context: int = 512,
+            streaming: bool = True
         ) -> None:
-        super().__init__(models=models, suggested_model=suggested_model)
+        super().__init__(models=models, suggested_model=suggested_model, streaming=streaming)
         self.local_path = local_path
         self.hf_repo = hf_repo
         self.chat_format = chat_format
@@ -23,10 +24,7 @@ class LlamaCppModel(LanguageModel):
         self.n_context = n_context
         self.model_objects = {}
 
-    def generate_chat_completion(self, message, history, system_prompt, model):
-        pass
-
-    def generate_chat_completion_streaming(self, message, history, system_prompt, model):
+    def generate_chat_completion_int(self, message, history, system_prompt, model, streaming):
         if model not in self.models:
             raise ValueError("Requested model not found")
         filename = model + ".gguf"
@@ -63,7 +61,17 @@ class LlamaCppModel(LanguageModel):
 
         completion = ""
 
-        for chunk in model.create_chat_completion(messages=messages, stream=True):
-            if 'content' in chunk["choices"][0]['delta']:
-                completion = completion + chunk["choices"][0]['delta']['content']
-                yield completion    
+        if streaming:
+            for chunk in model.create_chat_completion(messages=messages, stream=True):
+                if 'content' in chunk["choices"][0]['delta']:
+                    completion = completion + chunk["choices"][0]['delta']['content']
+                    yield completion
+        else:
+            yield model.create_chat_completion(messages=messages)['choices'][0]['message']['content']
+
+
+    def generate_chat_completion(self, message, history, system_prompt, model):
+        yield from self.generate_chat_completion_int(message, history, system_prompt, model, False)
+
+    def generate_chat_completion_streaming(self, message, history, system_prompt, model):
+        yield from self.generate_chat_completion_int(message, history, system_prompt, model, True)

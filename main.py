@@ -2,7 +2,7 @@
 import gradio as gr
 
 from config import Config
-from models import LlamaCppModel, HfTransformersModel
+from models import LlamaCppModel, HfTransformersModel, AnthropicClaudeModel
 
 
 conf = Config()
@@ -24,6 +24,12 @@ for m in conf.models:
 
         models.append(HfTransformersModel(**arguments))
         model_names.extend(arguments["models"])
+    elif m["type"] == "AnthropicClaude":
+        arguments = m["args"]
+        arguments["api_key"] = conf["anthropic_api_key"]
+
+        models.append(AnthropicClaudeModel(**arguments))
+        model_names.extend(arguments["models"])
 
 model_names = set(model_names)
 
@@ -36,10 +42,10 @@ def generate_chat_completion(message, history, system_prompt, model):
             else:
                 yield from m.generate_chat_completion (message, history, system_prompt, model)
 
-with gr.Blocks() as chatbot:
+with gr.Blocks(fill_height=True) as chatbot:
     with gr.Row():
         system_prompt = gr.Textbox("You are a helpful assistant", label="System Prompt")
         model = gr.Dropdown(model_names, value=conf.default_model, label="Model")
-    gr.ChatInterface(generate_chat_completion, additional_inputs=[system_prompt, model])
+    gr.ChatInterface(generate_chat_completion, additional_inputs=[system_prompt, model], fill_height=True)
 
 chatbot.launch(server_name="0.0.0.0")
