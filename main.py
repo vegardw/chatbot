@@ -44,15 +44,18 @@ def generate_chat_completion(message, history, system_prompt, model):
 
 
 def update_system_prompt(prompt):
-    conf.system_prompts[conf.system_prompts.index(system_prompt.value)] = prompt
-    conf.save()
+    if prompt not in conf.system_prompts:
+        conf.system_prompts[conf.system_prompts.index(system_prompt.value)] = prompt
+        conf.save()
+    system_prompt.value = prompt
     return gr.Dropdown(choices=conf.system_prompts, value=prompt)
 
 def add_system_prompt():
-    default_prompt = "You are a helpful assistant."
-    conf.system_prompts.append(default_prompt)
+    new_prompt = "New Prompt."
+    conf.system_prompts.append(new_prompt)
     conf.save()
-    return gr.Dropdown(choices=conf.system_prompts, value=default_prompt)
+    system_prompt.value = new_prompt
+    return gr.Dropdown(choices=conf.system_prompts, value=new_prompt)
 
 with gr.Blocks(fill_height=True) as chatbot:
     with gr.Row():
