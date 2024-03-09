@@ -64,10 +64,10 @@ class LlamaCppModel(LanguageModel):
         if streaming:
             for chunk in model.create_chat_completion(messages=messages, stream=True):
                 if 'content' in chunk["choices"][0]['delta']:
-                    completion = completion + chunk["choices"][0]['delta']['content']
+                    completion = (completion + chunk["choices"][0]['delta']['content']).lstrip()
                     yield completion
         else:
-            yield model.create_chat_completion(messages=messages)['choices'][0]['message']['content']
+            yield model.create_chat_completion(messages=messages)['choices'][0]['message']['content'].lstrip()
 
 
     def generate_chat_completion(self, message, history, system_prompt, model):

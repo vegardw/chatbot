@@ -4,8 +4,9 @@ from datetime import datetime
 
 from config import Config
 from models import LlamaCppModel, HfTransformersModel, AnthropicClaudeModel
+from history import ChatHistory
 
-
+chat_history = ChatHistory()
 conf = Config()
 models = []
 model_names = []
@@ -34,15 +35,28 @@ for m in conf.models:
 
 model_names = sorted(set(model_names))
 
+def load_initial_history():
+    history = chat_history.load_history()
+    chat_messages = []
+    for entry in history:
+        chat_messages.append((entry["user"], entry["assistant"]))
+    return chat_messages
+
 def generate_chat_completion(message, history, system_prompt, model):
     system_prompt = system_prompt.replace("{{date}}", datetime.now().strftime("%B %-d, %Y"))
     for m in models:
         if model in m.models:
-            if m.streaming == True:
-                yield from m.generate_chat_completion_streaming (message, history, system_prompt, model)
-                break
+            if m.streaming:
+                response = ""
+                for r in m.generate_chat_completion_streaming(message, history, system_prompt, model):
+                    response = r
+                    yield response
+                chat_history.add_to_history(message, response)  # Save chat history
             else:
-                yield from m.generate_chat_completion (message, history, system_prompt, model)
+                response = next(m.generate_chat_completion(message, history, system_prompt, model))
+                chat_history.add_to_history(message, response)  # Save chat history
+                yield response
+            break
 
 
 def update_system_prompt(prompt):
@@ -68,6 +82,15 @@ with gr.Blocks(fill_height=True) as chatbot:
     system_prompt.input(update_system_prompt, inputs=system_prompt, outputs=system_prompt)
     add_prompt_button.click(add_system_prompt, outputs=system_prompt)
 
-    gr.ChatInterface(generate_chat_completion, additional_inputs=[system_prompt, model], fill_height=True)
+    bot = gr.Chatbot(render=False)
+               
+    gr.ChatInterface(
+        generate_chat_completion,
+        chatbot=bot,
+        additional_inputs=[system_prompt, model],
+        fill_height=True
+    )
+
+    chatbot.load(load_initial_history, outputs=bot)
 
 chatbot.launch(server_name="0.0.0.0")
