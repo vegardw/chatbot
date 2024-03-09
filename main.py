@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import gradio as gr
+from datetime import datetime
 
 from config import Config
 from models import LlamaCppModel, HfTransformersModel, AnthropicClaudeModel
@@ -34,6 +35,7 @@ for m in conf.models:
 model_names = sorted(set(model_names))
 
 def generate_chat_completion(message, history, system_prompt, model):
+    system_prompt = system_prompt.replace("{{date}}", datetime.now().strftime("%B %-d, %Y"))
     for m in models:
         if model in m.models:
             if m.streaming == True:
