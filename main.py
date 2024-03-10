@@ -21,8 +21,6 @@ for m in conf.models:
         model_names.extend(arguments["models"])
     elif m["type"] == "HfTransformers":
         arguments = m["args"]
-        #if not "local_path" in arguments:
-        #    arguments["local_path"] = conf.model_path
 
         models.append(HfTransformersModel(**arguments))
         model_names.extend(arguments["models"])
@@ -44,6 +42,7 @@ def load_initial_history():
 
 def generate_chat_completion(message, history, system_prompt, model):
     system_prompt = system_prompt.replace("{{date}}", datetime.now().strftime("%B %-d, %Y"))
+    history.append
     for m in models:
         if model in m.models:
             if m.streaming:
@@ -73,24 +72,58 @@ def add_system_prompt():
     system_prompt.value = new_prompt
     return gr.Dropdown(choices=conf.system_prompts, value=new_prompt)
 
+def toggle_sidebar(state):
+    state = not state
+    return gr.update(visible = state), state
+
+def clear_textbox(message):
+    return "", message
+
+def submit_message(message, history, system_prompt, model):
+    out = history + [[message, ""]]
+    msg.value = ""
+    for res in generate_chat_completion(message, history, system_prompt, model):
+        out[-1][1] = res
+        yield out
+
 with gr.Blocks(fill_height=True) as chatbot:
     with gr.Row():
-        model = gr.Dropdown(model_names, value=conf.default_model, label="Model")
-        system_prompt = gr.Dropdown(conf.system_prompts, value=conf.system_prompts[0], allow_custom_value=True, label="System Prompt")
-        add_prompt_button = gr.Button("Add System Prompt")
-        
-    system_prompt.input(update_system_prompt, inputs=system_prompt, outputs=system_prompt)
-    add_prompt_button.click(add_system_prompt, outputs=system_prompt)
+        with gr.Column(visible=False, scale=1, min_width=150) as sidebar_left:
+            gr.Markdown("SideBar Left")
+        with gr.Column(scale=9) as main:
+            with gr.Row():
+                with gr.Column(scale=6):
+                    nav_bar = gr.Markdown("NavBar")
+                sidebar_state = gr.State(False)
 
-    bot = gr.Chatbot(render=False)
-               
-    gr.ChatInterface(
-        generate_chat_completion,
-        chatbot=bot,
-        additional_inputs=[system_prompt, model],
-        fill_height=True
-    )
+                btn_toggle_sidebar = gr.Button("Toggle Sidebar", size="sm", scale=1)
+                btn_toggle_sidebar.click(toggle_sidebar, [sidebar_state], [sidebar_left, sidebar_state])
+            with gr.Row():
+                with gr.Column(scale=5):
+                    with gr.Row():
+                        model = gr.Dropdown(model_names, value=conf.default_model, show_label=False)
+                        system_prompt = gr.Dropdown(conf.system_prompts, value=conf.system_prompts[0], allow_custom_value=True, show_label=False)
+                add_prompt_button = gr.Button("Add System Prompt", size="sm", scale=1)
+        
+            system_prompt.input(update_system_prompt, inputs=system_prompt, outputs=system_prompt)
+            add_prompt_button.click(add_system_prompt, outputs=system_prompt)
+
+            bot = gr.Chatbot()
+            msg = gr.Textbox(show_label=False)
+            msg_buf = gr.State()
+
+            msg.submit(
+                clear_textbox, 
+                inputs=msg, 
+                outputs=[msg, msg_buf],
+                queue=False
+            ).then(
+                submit_message, 
+                inputs=[msg_buf,bot,system_prompt,model], 
+                outputs=bot
+            )
 
     chatbot.load(load_initial_history, outputs=bot)
 
+chatbot.queue()
 chatbot.launch(server_name="0.0.0.0")
