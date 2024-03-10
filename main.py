@@ -6,6 +6,8 @@ from config import Config
 from models import LlamaCppModel, HfTransformersModel, AnthropicClaudeModel
 from history import ChatHistory
 
+
+
 chat_history = ChatHistory()
 conf = Config()
 models = []
@@ -113,11 +115,44 @@ def submit_message(message, history, system_prompt, model, session_id):
         out[-1][1] = res
         yield out
 
+def load_session_list():
+    html = "<ul>\n"
+    sessions = chat_history.session_manager.sessions
+    for s in sessions:
+        html += f"<li class=\"chatsession\" data-session-id=\"{s.id}\">{s.name}</li>\n"
+    html += "</ul>"
+    return html
+
+load_session_list_js = """
+() => {
+    setTimeout(() => {
+        sessionElements = document.querySelectorAll(".chatsession");
+
+        sessionElements.forEach((s) => {
+            new_s = s.cloneNode(true);
+            s.parentNode.replaceChild(new_s, s);
+            s = new_s;
+            s.addEventListener("click", (e) => {
+                selected_id = e.target.dataset.sessionId;
+                id_to_load = document.getElementById("session_id").querySelector("textarea");
+                id_to_load.value = selected_id
+                evt = new Event("input");
+                Object.defineProperty(evt, "target", {value: id_to_load});
+                id_to_load.dispatchEvent(evt);
+                s_btn = document.getElementById("s_btn");
+                s_btn.click();
+            });
+        });
+    }, 500);
+}
+"""
+
 with gr.Blocks(fill_height=True) as chatbot:
-    session_id = gr.State(value=None)
+    session_id = gr.Textbox(value=None, visible=False, elem_id="session_id")
+    s_btn = gr.Button(visible=False, elem_id="s_btn")
     with gr.Row():
         with gr.Column(visible=False, scale=1, min_width=150) as sidebar_left:
-            gr.Markdown("SideBar Left")
+            session_list = gr.HTML(elem_id="session_list")
         with gr.Column(scale=9) as main:
             with gr.Row():
                 with gr.Column(scale=6):
@@ -136,8 +171,9 @@ with gr.Blocks(fill_height=True) as chatbot:
             system_prompt.input(update_system_prompt, inputs=system_prompt, outputs=system_prompt)
             add_prompt_button.click(add_system_prompt, outputs=system_prompt)
 
-            bot = gr.Chatbot()
-            msg = gr.Textbox(show_label=False)
+            with gr.Group():
+                bot = gr.Chatbot(elem_id="conversation")
+                msg = gr.Textbox(show_label=False,)
             msg_buf = gr.State()
 
             msg.submit(
@@ -157,7 +193,8 @@ with gr.Blocks(fill_height=True) as chatbot:
 
             
 
-    #chatbot.load(load_session, inputs=session_id, outputs=[session_id, bot])
+    s_btn.click(load_session, inputs=session_id, outputs=[session_id, bot])
+    chatbot.load(load_session_list, outputs=session_list).then(fn=lambda: None, js=load_session_list_js)
 
 chatbot.queue()
 chatbot.launch(server_name="0.0.0.0")

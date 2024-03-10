@@ -45,7 +45,7 @@ class LlamaCppModel(LanguageModel):
                 model_path=filename,
                 chat_format=self.chat_format,
                 n_gpu_layers=self.n_gpu_layers,
-                n_context = self.n_context,
+                n_ctx = self.n_context,
                 verbose=False
             )
         model = self.model_objects[model]
