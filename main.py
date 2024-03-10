@@ -33,7 +33,7 @@ for m in conf.models:
 
 model_names = sorted(set(model_names))
 
-def load_initial_history(session_id):
+def load_session(session_id):
     chat_messages = []
     history = chat_history.load_history(session_id)
 
@@ -101,6 +101,11 @@ def toggle_sidebar(state):
 def clear_textbox(message):
     return "", message
 
+def create_session_if_none(session_id):
+    if session_id == None or chat_history.session_manager.get_session(session_id) == None:
+        session_id = chat_history.session_manager.create_session("New session").id
+    return session_id
+
 def submit_message(message, history, system_prompt, model, session_id):
     out = history + [[message, ""]]
     msg.value = ""
@@ -109,6 +114,7 @@ def submit_message(message, history, system_prompt, model, session_id):
         yield out
 
 with gr.Blocks(fill_height=True) as chatbot:
+    session_id = gr.State(value=None)
     with gr.Row():
         with gr.Column(visible=False, scale=1, min_width=150) as sidebar_left:
             gr.Markdown("SideBar Left")
@@ -134,13 +140,15 @@ with gr.Blocks(fill_height=True) as chatbot:
             msg = gr.Textbox(show_label=False)
             msg_buf = gr.State()
 
-            session_id = gr.State(value="a21ad153-4184-42b9-888e-0eb2d0a39c71")
-
             msg.submit(
                 clear_textbox, 
                 inputs=msg, 
                 outputs=[msg, msg_buf],
                 queue=False
+            ).then(
+                create_session_if_none,
+                inputs=session_id,
+                outputs=session_id
             ).then(
                 submit_message, 
                 inputs=[msg_buf,bot,system_prompt,model, session_id], 
@@ -149,7 +157,7 @@ with gr.Blocks(fill_height=True) as chatbot:
 
             
 
-    chatbot.load(load_initial_history, inputs=session_id, outputs=[session_id, bot])
+    #chatbot.load(load_session, inputs=session_id, outputs=[session_id, bot])
 
 chatbot.queue()
 chatbot.launch(server_name="0.0.0.0")
