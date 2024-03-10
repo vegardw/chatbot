@@ -33,14 +33,36 @@ for m in conf.models:
 
 model_names = sorted(set(model_names))
 
-def load_initial_history():
-    history = chat_history.load_history()
+def load_initial_history(session_id):
     chat_messages = []
-    for entry in history:
-        chat_messages.append((entry["user"], entry["assistant"]))
-    return chat_messages
+    history = chat_history.load_history(session_id)
 
-def generate_chat_completion(message, history, system_prompt, model):
+    if history:
+        previous_role = None
+        for entry in history:
+            role = entry['role']
+            content = entry['content']
+
+            if role == 'user':
+                if previous_role == 'user':
+                    chat_messages[-1].append(None)
+                chat_messages.append([content])
+            elif role == 'assistant':
+                if previous_role == 'assistant':
+                    chat_messages.append([None])
+                chat_messages[-1].append(content)
+
+            previous_role = role
+
+            # Handle the case where the last message is from the user
+        if previous_role == 'user':
+            chat_messages[-1].append(None)
+    else:
+        session_id = chat_history.session_manager.create_session("New session").id
+        
+    return session_id, chat_messages
+
+def generate_chat_completion(message, history, system_prompt, model, session_id):
     system_prompt = system_prompt.replace("{{date}}", datetime.now().strftime("%B %-d, %Y"))
     history.append
     for m in models:
@@ -50,10 +72,10 @@ def generate_chat_completion(message, history, system_prompt, model):
                 for r in m.generate_chat_completion_streaming(message, history, system_prompt, model):
                     response = r
                     yield response
-                chat_history.add_to_history(message, response)  # Save chat history
+                chat_history.add_to_history(session_id, message, response)  # Save chat history
             else:
                 response = next(m.generate_chat_completion(message, history, system_prompt, model))
-                chat_history.add_to_history(message, response)  # Save chat history
+                chat_history.add_to_history(session_id, message, response)  # Save chat history
                 yield response
             break
 
@@ -79,10 +101,10 @@ def toggle_sidebar(state):
 def clear_textbox(message):
     return "", message
 
-def submit_message(message, history, system_prompt, model):
+def submit_message(message, history, system_prompt, model, session_id):
     out = history + [[message, ""]]
     msg.value = ""
-    for res in generate_chat_completion(message, history, system_prompt, model):
+    for res in generate_chat_completion(message, history, system_prompt, model, session_id):
         out[-1][1] = res
         yield out
 
@@ -112,6 +134,8 @@ with gr.Blocks(fill_height=True) as chatbot:
             msg = gr.Textbox(show_label=False)
             msg_buf = gr.State()
 
+            session_id = gr.State(value="a21ad153-4184-42b9-888e-0eb2d0a39c71")
+
             msg.submit(
                 clear_textbox, 
                 inputs=msg, 
@@ -119,11 +143,13 @@ with gr.Blocks(fill_height=True) as chatbot:
                 queue=False
             ).then(
                 submit_message, 
-                inputs=[msg_buf,bot,system_prompt,model], 
+                inputs=[msg_buf,bot,system_prompt,model, session_id], 
                 outputs=bot
             )
 
-    chatbot.load(load_initial_history, outputs=bot)
+            
+
+    chatbot.load(load_initial_history, inputs=session_id, outputs=[session_id, bot])
 
 chatbot.queue()
 chatbot.launch(server_name="0.0.0.0")
